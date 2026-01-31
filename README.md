@@ -17,3 +17,5 @@ Utilizar o prisma
 6- NPX prisma studio -> abrir o SGBD do prisma
 7- nest g service prisma
 7- Criar o PrismaService
+
+teste
