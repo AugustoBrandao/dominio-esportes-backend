@@ -1,0 +1,29 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Filiado {
+  id_cadastro            String   @id @default(uuid())
+  nome                   String
+  endereco               String
+  celular                String
+  nascimento             DateTime
+  sexo                   Boolean
+  pix                    Boolean
+  escolaridade           String
+  email                  String
+  modalidade_esportiva   String
+  academia_clube_empresa String
+  endereco_instituicao   String
+  telefone               String
+  email_instituicao      String
+  tipo_instituicao       String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
