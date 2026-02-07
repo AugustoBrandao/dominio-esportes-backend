@@ -14,8 +14,10 @@ Utilizar o prisma
 4- Alterar a variável de ambiente .env
 5- Gerar a migration: 
       npx prisma migrate dev --name [NOME DA MIGRATION]
-6- NPX prisma studio -> abrir o SGBD do prisma
+6- npx prisma studio -> abrir o SGBD do prisma
 7- nest g service prisma
 7- Criar o PrismaService
 
-teste
+VERCEL
+npm install -g vercel -> instalar globalmente
+vercel .

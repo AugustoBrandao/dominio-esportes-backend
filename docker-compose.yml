@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: bitnami/postgresql:latest
+    container_name: polls-postgres
+    ports:
+      - "5437:5432"
+    environment:
+      POSTGRES_USER: docker
+      POSTGRES_PASSWORD: docker
+      POSTGRES_DB: polls
+    volumes:
+      - polls_pg_data:/bitnami/postgresql
+    restart: unless-stopped
+
+volumes:
+  polls_pg_data:
