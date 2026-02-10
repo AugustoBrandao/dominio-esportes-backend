@@ -21,3 +21,14 @@ Utilizar o prisma
 VERCEL
 npm install -g vercel -> instalar globalmente
 vercel .
+
+DOCKERIZANDO A APLICAÇÃO
+-> Criar o Dockerfile
+-> docker build -t dominio-esportes-backend .
+-> docker image ls -> listar todas as imagens docker
+-> docker run -dp 127.0.0.1:3100:3100 dominio-esportes-backend -> vai retornar um id -> Cria e inicia um container a partir de uma imagem.
+-> FAZER UMA NETWORK PARA COMUNICAÇÃO ENTRE CONTAINERES -> FRONTEND -> BACKEND -> BD
+      -> docker network create dominio-esportes-network -> criar a network
+      -> atualizar a imagem da dominio-esportes-backend -> deletar imagem e container
+      -> subir o container na rede dominio-esportes-network:
+            - docker run -d --name dominio-esportes-backend --network dominio-esportes-network -p 127.0.0.1:3100:3100 dominio-esportes-image

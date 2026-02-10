@@ -1,7 +1,9 @@
+version: "3.9"
+
 services:
   postgres:
     image: bitnami/postgresql:latest
-    container_name: polls-postgres
+    container_name: db_container
     ports:
       - "5437:5432"
     environment:
@@ -9,8 +11,29 @@ services:
       POSTGRES_PASSWORD: docker
       POSTGRES_DB: polls
     volumes:
-      - polls_pg_data:/bitnami/postgresql
+      - postgres_volume:/bitnami/postgresql
     restart: unless-stopped
+    networks:
+      - dominio-esportes-networking
+
+  api:
+    container_name: dominio-esportes-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3100:3100"
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    networks:
+      - dominio-esportes-networking
 
 volumes:
-  polls_pg_data:
+  postgres_volume:
+
+networks:
+  dominio-esportes-networking:
+    external: true
