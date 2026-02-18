@@ -1,17 +1,19 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { AppService } from './app.service';
+import { CreatePixDto } from './dto/create-pix.dto';
+import { CardPaymentDto } from './dto/card-payment.dto';
 
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Post('/criar-pix')
-  async criarPix(): Promise<any> {
-    return await this.appService.criarPix(100.00, 'augustobrandao.99@outlook.com');
+  async criarPix(@Body() body: CreatePixDto): Promise<any> {
+    return await this.appService.criarPix(body);
   }
 
   @Post('/process_payment')
-  async cardPayment(@Body() body: any): Promise<any> {
+  async cardPayment(@Body() body: CardPaymentDto): Promise<any> {
     return await this.appService.cardPayment(body);
   }
 
@@ -27,6 +29,6 @@ export class AppController {
   
   @Get('/test')
   async teste() {
-    return "Hello World - It's working";
+    return "Hello World - Project is working";
   }
 }

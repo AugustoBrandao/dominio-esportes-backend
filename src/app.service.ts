@@ -1,108 +1,86 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { MercadoPagoConfig, Payment } from "mercadopago"; // npm install --save mercadopago
 import { PrismaService } from './prisma/prisma.service'; // 
+import { CreatePixDto } from './dto/create-pix.dto';
+import { ConfigService } from '@nestjs/config';
+import { generateIdempotencyKey } from './helpers/generate-indempotence-key';
+import { IPixResponse } from './interfaces/pix-response.interface';
+import { CardPaymentDto } from './dto/card-payment.dto';
+import generateCadastroId from './helpers/generate-cadastro-id.helper';
 
 // npm install -g localtunnel
 // lt --port 3100
 
 @Injectable()
 export class AppService {
-  constructor(private prismaService: PrismaService) {}
+  private payment: Payment;
 
-  async criarPix(amount: number, userEmail: string): Promise<any> {
-    // Step 2: Initialize the client object
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly configService: ConfigService,
+  ) {
+    // Step 1: Initialize the client object
     const client = new MercadoPagoConfig({
-      accessToken: "TEST-4238725792701730-012413-f10863abb808aca26832fd8b07a238c6-1582689955",
-      options: { timeout: 5000 },
+      accessToken: this.configService.get<string>('MERCADO_PAGO_ACCESS_TOKEN')!,
+      options: { timeout: Number(this.configService.get('MERCADO_PAGO_TIMEOUT')) },
     });
 
-    // Step 3: Initialize the API object
-    const payment = new Payment(client);  
+    // Step 2: Initialize the API object
+    this.payment = new Payment(client);
+  }
 
-    // Step 4: Create the request object
+  // Pix payment method
+  async criarPix(dto: CreatePixDto): Promise<IPixResponse> { 
+
+    // Step 3: Create the request object
     const body = {
-      transaction_amount: amount,
-      description: `Pagamento Pix no valor de ${amount}`,
+      transaction_amount: dto.amount,
+      description: `Pagamento Pix no valor de ${dto.amount}`,
       payment_method_id: 'pix',
       payer: {
-        email: userEmail,
+        email: dto.userEmail,
       }
     };
 
-    //Gerar uma sequência randômica de letras e números
-    const generateCode = () => {
-      const numbers = Array.from({ length: 10 }, () =>
-        Math.floor(Math.random() * 10)
-      ).join('');
-    
-      const letters = Array.from({ length: 4 }, () =>
-        String.fromCharCode(65 + Math.floor(Math.random() * 26))
-      ).join('');
-    
-      return `${numbers}${letters}`;
-    };
-
-    const requestOptions = {
-      idempotencyKey: generateCode(),
-    }
-
     try {
-      const result = await payment.create({ body, requestOptions });
+      const result = await this.payment.create({ 
+        body, 
+        requestOptions: {
+          idempotencyKey: generateIdempotencyKey(),
+        }
+      });
+
+      const data = result.point_of_interaction?.transaction_data;
+
+      if (!data || !data.qr_code || !data.qr_code_base64 || !data.ticket_url ) { 
+        throw new InternalServerErrorException('Erro ao gerar dados do PIX no Mercado Pago.'); 
+      }
     
       return {
-        qr_code: result.point_of_interaction?.transaction_data?.qr_code ?? null,
-        qr_code_base64: result.point_of_interaction?.transaction_data?.qr_code_base64 ?? null,
-        ticket_url: result.point_of_interaction?.transaction_data?.ticket_url ?? null,
+        qr_code: data?.qr_code ?? null,
+        qr_code_base64: data?.qr_code_base64 ?? null,
+        ticket_url: data?.ticket_url ?? null,
       };
     } catch (error) {
-      console.log('ERRO ===> ', error);
-      throw error;
+      console.error('Erro ao criar PIX:', error);
+      throw new InternalServerErrorException('Erro ao criar pagamento PIX.');
     }
   }
 
-  async cardPayment(body: any): Promise<any> {
-    const client = new MercadoPagoConfig({
-      accessToken: 'TEST-4238725792701730-012413-f10863abb808aca26832fd8b07a238c6-1582689955',
-    });
-  
-    const generateCode = () => {
-      const numbers = Array.from({ length: 10 }, () =>
-        Math.floor(Math.random() * 10)
-      ).join('');
-  
-      const letters = Array.from({ length: 4 }, () =>
-        String.fromCharCode(65 + Math.floor(Math.random() * 26))
-      ).join('');
-  
-      return `${numbers}${letters}`;
-    };
-  
-    const payment = new Payment(client);
-    console.log(body);
-    const result = await payment.create({
-      body: {
-        transaction_amount: body.transaction_amount,
-        token: body.token,
-        description: body.description,
-        installments: body.installments,
-        payment_method_id: body.payment_method_id,
-        issuer_id: body.issuer_id,
-        payer: {
-          email: body.payer.email,
-          identification: {
-            type: body.payer.identification.type,
-            number: body.payer.identification.number,
-          },
-        },
-      },
+  // Card payment method
+  async cardPayment(dto: CardPaymentDto): Promise<any> {
+
+    const result = await this.payment.create({
+      body: dto,
       requestOptions: {
-        idempotencyKey: generateCode(),
+        idempotencyKey: generateIdempotencyKey(),
       },
     });
   
     return result;
   }  
 
+  //Get all
   async getFiliados() {
     return this.prismaService.filiado.findMany();
   }
@@ -111,20 +89,7 @@ export class AppService {
   async createFiliado(payload: any) {
     const { filiado, pix } = payload;
 
-    const generateCadastroId = () => {
-      const now = new Date();
-      const pad = (n, size = 2) => String(n).padStart(size, "0");
-      const day = pad(now.getDate());
-      const month = pad(now.getMonth() + 1);
-      const year = String(now.getFullYear()).slice(-2);
-      const hour = pad(now.getHours());
-      const minute = pad(now.getMinutes());
-      const second = pad(now.getSeconds());
-      const ms = pad(now.getMilliseconds(), 3);
-    
-      return `${day}${month}${year}${hour}${minute}${second}${ms}`;
-    };
-
+    //helper
     const id_cadastro = generateCadastroId();
   
     return this.prismaService.filiado.create({
